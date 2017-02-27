@@ -15,9 +15,14 @@ log/
 *.bak
 *.dump
 *.iml
+*.orig
 *.plt
+*.save
+*.sh
 *.sublime-project
 *.sublime-workspace
+*.swo
+*.swp
 *.tmp
 *.txt
 *_plt
