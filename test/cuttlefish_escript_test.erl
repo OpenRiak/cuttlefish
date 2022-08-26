@@ -22,7 +22,6 @@
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
--compile(export_all).
 
 -define(assertPrinted(___Text),
         begin

@@ -1,8 +1,6 @@
 %% -------------------------------------------------------------------
 %%
-%%  handles both variable and variable definitions
-%%
-%% Copyright (c) 2013 Basho Technologies, Inc.  All Rights Reserved.
+%% Copyright (c) 2013-2014 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -19,6 +17,9 @@
 %% under the License.
 %%
 %% -------------------------------------------------------------------
+%%
+%% @doc Handles both variable and variable definitions
+%%
 -module(cuttlefish_variable).
 
 -type variable() :: [string()].
@@ -30,7 +31,6 @@
 -define(QC_OUT(Prop), on_output(fun(F,A) -> io:format(user, F, A) end, Prop)).
 -endif.
 -include_lib("eunit/include/eunit.hrl").
--compile(export_all).
 -endif.
 
 -export([
@@ -48,7 +48,7 @@
 %% Inverse of tokenize/1.
 -spec format(variable()) -> string().
 format(Key=[H|_]) when is_list(H) ->
-    Escaped = [re:replace(Word, "[.]", "\\\\&", [{return, list}, global]) || 
+    Escaped = [re:replace(Word, "[.]", "\\\\&", [{return, list}, global]) ||
                   Word <- Key],
     string:join(Escaped, ".").
 
@@ -254,7 +254,7 @@ filter_by_variable_starts_with_test() ->
 
 -ifdef(EQC).
 variable_roundtrip_test_() ->
-   {timeout, 15, 
+   {timeout, 15,
     [?_assert(quickcheck(eqc:testing_time(3,?QC_OUT(prop_format_tokenize_roundtrip()))))]}.
 
 prop_format_tokenize_roundtrip() ->

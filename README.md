@@ -5,6 +5,10 @@ fine line between Erlang `app.config`s and a sysctl-like syntax.
 The name is a pun on the pronunciation of 'sysctl' and jokes are
 better explained.
 
+This repository retains full history of the original repository, [basho/cuttlefish](https://github.com/basho/cuttlefish/),
+but intentionally cut ties with that repo to avoid confusion as to
+where is the most up-to-date, maintained version is.
+
 ## Riak Disclaimer
 
 While this readme and test suite is Riak-heavy, the fact is that this
@@ -88,7 +92,14 @@ https://github.com/basho/cuttlefish/wiki/Cuttlefish-for-Application-Users
 * [node_package](https://github.com/basho/cuttlefish/wiki/Cuttlefish-for-node_package-users)
 * [non node_package](https://github.com/basho/cuttlefish/wiki/Cuttlefish-for-non-node_package-users)
 
-
 ## Current Status
 
 Cuttlefish is ready for production deployments.
+
+## Re-generating parser
+
+```
+rebar3 as dev neotoma compile
+```
+
+Please see the *NOTE* in `src/conf_parse.peg` as well.

@@ -1,6 +1,6 @@
 %% -------------------------------------------------------------------
 %%
-%% Copyright (c) 2012 Basho Technologies, Inc.
+%% Copyright (c) 2014 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -19,10 +19,12 @@
 %% -------------------------------------------------------------------
 -module(cuttlefish_test_group_leader).
 
--export([new_group_leader/1, 
-         group_leader_loop/2, 
+-export([new_group_leader/1,
+         group_leader_loop/2,
          tidy_up/1,
          get_output/0]).
+
+-compile(nowarn_deprecated_function).
 
 %% @doc spawns the new group leader
 new_group_leader(Runner) ->
@@ -35,8 +37,8 @@ group_leader_loop(Runner, Output) ->
             P = process_flag(priority, normal),
             %% run this part under normal priority always
             NewOutput = io_request(From, ReplyAs, Req, Output),
-            process_flag(priority, P),            
-            group_leader_loop(Runner, NewOutput);        
+            process_flag(priority, P),
+            group_leader_loop(Runner, NewOutput);
         {get_output, Ref, From} ->
             From ! {Ref, queue:to_list(Output)},
             group_leader_loop(Runner, Output);

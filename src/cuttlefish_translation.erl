@@ -17,13 +17,13 @@
 %% under the License.
 %%
 %% -------------------------------------------------------------------
-
-%% models a cuttlefish translation
+%%
+%% @doc models a cuttlefish translation
+%%
 -module(cuttlefish_translation).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
--compile(export_all).
 -endif.
 
 -record(translation, {

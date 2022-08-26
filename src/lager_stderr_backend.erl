@@ -1,4 +1,6 @@
-%% Copyright (c) 2011-2012 Basho Technologies, Inc.  All Rights Reserved.
+%% -------------------------------------------------------------------
+%%
+%% Copyright (c) 2013-2014 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -13,10 +15,12 @@
 %% KIND, either express or implied.  See the License for the
 %% specific language governing permissions and limitations
 %% under the License.
-
+%%
+%% -------------------------------------------------------------------
+%%
 %% @doc Console backend for lager. Configured with a single option, the loglevel
 %% desired.
-
+%%
 -module(lager_stderr_backend).
 
 -behaviour(gen_event).

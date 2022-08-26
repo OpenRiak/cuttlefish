@@ -1,6 +1,7 @@
 %% -------------------------------------------------------------------
 %%
 %% Copyright (c) 2013-2017 Basho Technologies, Inc.
+%% Copyright (c) 2019 Pivotal Software, Inc.  All rights reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -17,6 +18,24 @@
 %% under the License.
 %%
 %% -------------------------------------------------------------------
+
+% -------------------------------------------------------------------
+% NOTE: IMPORTANT
+%
+% After using neotoma to re-generate conf_parse.erl, you MUST
+% edit that file to change the exported file/1 function to this code:
+%
+% -spec file(file:name()) -> any().
+% file(Filename) ->
+%     AbsFilename = filename:absname(Filename),
+%     case erl_prim_loader:get_file(AbsFilename) of
+%         {ok, Bin, _} -> parse(Bin);
+%         error -> {error, undefined}
+%     end.
+%
+% The reason is that the above code allows for reading cuttlefish
+% schemas from .ez archives
+% -------------------------------------------------------------------
 
 %% A configuration file may have zero-or-more lines.
 config <- line* %{
@@ -73,7 +92,7 @@ crlf <- "\r"? "\n" `ws`;
 eof <- !. `ws`;
 
 %% Whitespace is either spaces or tabs.
-ws <- [ \t] `ws`;
+ws <- [ \t]+ `ws`;
 
 % Erlang code
 %{
@@ -97,6 +116,8 @@ ws <- [ \t] `ws`;
 %% under the License.
 %%
 %% -------------------------------------------------------------------
+%%
+%% For all your .conf parsing needs.
 %%
 %% This is a generated file, changes should be made to conf_parse.peg.
 %%
@@ -127,11 +148,11 @@ ws <- [ \t] `ws`;
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
--compile(export_all).
 -endif.
 
 %% @doc Only let through lines that are not comments or whitespace.
 is_setting(ws) -> false;
+is_setting([ws]) -> false;
 is_setting(comment) -> false;
 is_setting(_) -> true.
 
@@ -162,5 +183,22 @@ utf8_test() ->
             {error, {conf_to_latin1, 1}}
         }], Conf),
     ok.
+
+gh_1_two_tab_test() ->
+    Conf = conf_parse:parse("setting0 = thing0\n\t\t\nsetting1 = thing1\n"),
+    ?assertEqual([
+            {["setting0"],"thing0"},
+            {["setting1"],"thing1"}
+        ], Conf),
+    ok.
+
+gh_1_three_tab_test() ->
+    Conf = conf_parse:parse("setting0 = thing0\n\t\t\t\nsetting1 = thing1\n"),
+    ?assertEqual([
+            {["setting0"],"thing0"},
+            {["setting1"],"thing1"}
+        ], Conf),
+    ok.
+
 -endif.
 %}

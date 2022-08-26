@@ -17,7 +17,6 @@
 %% under the License.
 %%
 %% -------------------------------------------------------------------
-
 %%
 %% @doc Handles the reading and generation of .conf files.
 %%
@@ -208,7 +207,6 @@ remove_duplicates(Conf) ->
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
--compile(export_all).
 -endif.
 
 -ifdef(TEST).
@@ -318,7 +316,7 @@ duplicates_multi_test() ->
 files_one_nonent_test() ->
     NonEnt = cuttlefish_test_util:test_file("nonent.conf"),
     Conf = files([cuttlefish_test_util:test_file("multi1.conf"), NonEnt]),
-    ?assertEqual({errorlist,[{error, {file_open, {NonEnt, enoent}}}]}, Conf),
+    ?assertEqual({errorlist,[{error, {file_open, {NonEnt, undefined}}}]}, Conf),
     ok.
 
 files_incomplete_parse_test() ->

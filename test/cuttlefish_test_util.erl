@@ -1,6 +1,7 @@
 %% -------------------------------------------------------------------
 %%
 %% Copyright (c) 2017 Basho Technologies, Inc.
+%% Copyright (c) 2022 Workday, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -17,7 +18,6 @@
 %% under the License.
 %%
 %% -------------------------------------------------------------------
-
 %%
 %% @doc Common functions for use in tests.
 %%
@@ -29,6 +29,8 @@
     fixtures_file/1,
     priv_dir/0,
     priv_file/1,
+    temp_dir/0,
+    temp_file/1,
     test_dir/0,
     test_file/1
 ]).
@@ -43,8 +45,10 @@
 %%
 %% @doc Returns the path to the "test_fixtures" directory.
 %%
-%% Rebar versions 2 and 3 differ on where the "test_fixtures" directory is
-%% relative to the current test directory.
+%% This generally resolves to the absolute path of
+%% ```
+%%  <cuttlefish-repo>/test_fixtures
+%% '''
 %%
 fixtures_dir() ->
     Key = {?MODULE, fixtures_dir},
@@ -80,18 +84,17 @@ fixtures_file(File) ->
 %%
 %% @doc Returns the path to the current "priv" directory.
 %%
-%% Rebar versions 2 and 3 differ on where the "priv" directory is relative
-%% to the current test directory.
+%% Under Rebar this generally resolves to the absolute path of
+%% ```
+%%  <project-repo>/_build/<profile>/lib/cuttlefish/priv
+%% '''
 %%
 priv_dir() ->
-    Key = {?MODULE, priv_dir},
+    Key = {?MODULE, ?FUNCTION_NAME},
     case erlang:get(Key) of
         undefined ->
-            TestPeer = filename:join(filename:dirname(test_dir()), "priv"),
-            Dir = case filelib:is_dir(TestPeer) of
-                true ->
-                    TestPeer;
-                _ ->
+            Dir = case cuttlefish_unit:lib_priv_dir(?MODULE) of
+                false ->
                     {ok, CWD} = file:get_cwd(),
                     Here = filename:join(CWD, "priv"),
                     case filelib:is_dir(Here) of
@@ -99,9 +102,11 @@ priv_dir() ->
                             Here;
                         _ ->
                             UpOne = filename:join(filename:dirname(CWD), "priv"),
-                            ?assertEqual(true, filelib:is_dir(UpOne)),
+                            ?assertMatch(true, filelib:is_dir(UpOne)),
                             UpOne
-                    end
+                    end;
+                Priv ->
+                    Priv
             end,
             _ = erlang:put(Key, Dir),
             Dir;
@@ -123,15 +128,17 @@ priv_file(File) ->
 %%
 %% @doc Returns the path to the current "test" directory.
 %%
-%% Rebar versions 2 and 3 differ widely on how and where files are laid out
-%% when running eunit, but when in the "test" directory both place the beam
-%% file in the same directory as its source.
+%% Under Rebar this generally resolves to the absolute path of
+%% ```
+%%  <project-repo>/_build/<profile>/lib/cuttlefish/test
+%% '''
 %%
 test_dir() ->
-    Key = {?MODULE, test_dir},
+    Key = {?MODULE, ?FUNCTION_NAME},
     case erlang:get(Key) of
         undefined ->
-            Dir = filename:dirname(code:which(?MODULE)),
+            Dir = cuttlefish_unit:lib_test_dir(?MODULE),
+            ?assertNotMatch(false, Dir),
             _ = erlang:put(Key, Dir),
             Dir;
         Val ->
@@ -148,3 +155,31 @@ test_dir() ->
 test_file(File) ->
     filename:join(test_dir(), File).
 
+-spec temp_dir() -> file:filename().
+%%
+%% @doc Returns the path to a temporary scratch directory.
+%%
+%% Under Rebar this generally resolves to the absolute path of
+%%  "<cuttlefish-repo>/_build/<profile>/lib/cuttlefish/temp".
+%%
+temp_dir() ->
+    Key = {?MODULE, ?FUNCTION_NAME},
+    case erlang:get(Key) of
+        undefined ->
+            Dir = cuttlefish_unit:lib_temp_dir(?MODULE),
+            ?assertNotMatch(false, Dir),
+            _ = erlang:put(Key, Dir),
+            Dir;
+        Val ->
+            Val
+    end.
+
+-spec temp_file(File :: file:filename()) -> file:filename().
+%%
+%% @doc Returns the path to a file in the temporary scratch directory.
+%%
+%% `File' is assumed to be a simple (possibly relative) filename under the
+%% directory returned by {@link temp_dir/0}.
+%%
+temp_file(File) ->
+    filename:join(temp_dir(), File).

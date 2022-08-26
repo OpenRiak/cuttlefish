@@ -1,6 +1,7 @@
 %% -------------------------------------------------------------------
 %%
 %% Copyright (c) 2013-2017 Basho Technologies, Inc.
+%% Copyright (c) 2022 Workday, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -17,10 +18,9 @@
 %% under the License.
 %%
 %% -------------------------------------------------------------------
-
 %%
 %% @doc Support for unit testing.
-%% @end
+%%
 -module(cuttlefish_unit).
 
 %% Documented and/or Active API
@@ -38,6 +38,7 @@
     generate_templated_config/3,
     generate_templated_config/4,
     lib_priv_dir/1,
+    lib_temp_dir/1,
     lib_test_dir/1
 ]).
 
@@ -69,15 +70,11 @@
 -type mustache_key()  :: atom() | binary() | string().
 -type mustache_val()  :: term().
 
-% This file uses eunit's assert macros so inclusion is unconditional.
-% However, eunit.hrl defines TEST by default, and we don't want that, so
-% override the default behavior if not actually running eunit (or ct).
--ifndef(TEST).
--ifndef(NOTEST).
--define(NOTEST, true).
--endif.
--endif.
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
+-else.
+-include_lib("stdlib/include/assert.hrl").
+-endif.
 
 %% ===================================================================
 %% Public API
@@ -180,16 +177,21 @@ assert_error_message(Config, Message) ->
 %% @doc Returns the path to an application's working "priv" directory.
 %%
 %% Module MUST be compiled from a file in one of the application's main source
-%% directories, generally the project's "src" directory.
+%% directories, generally the project's "src" or "test" directory.
 %% Module's code IS NOT explicitly loaded by this operation.
 %%
 %% The returned path is to the "priv" directory in the working instance of the
-%% application, which may be in a number of places in different Rebar versions.
+%% application, which may be in a number of places depending on the execution
+%% environment.
 %%
-%% `false' is returned if the path cannot be determined, or does not exist,
-%% or is not a directory.
+%% Under Rebar this generally resolves to the absolute path of
+%% ```
+%%  <project-repo>/_build/<profile>/lib/<application>/priv
+%% '''
 %%
-%% Logically, this is analogous to
+%% `false' is returned if the path does not exist or is not a directory.
+%%
+%% A successful result is logically analogous to
 %% ```
 %%  filename:join(
 %%      filename:dirname(filename:dirname(code:which(Module))),
@@ -197,23 +199,68 @@ assert_error_message(Config, Message) ->
 %% '''
 %%
 lib_priv_dir(Module) ->
-    lib_sub_dir(Module, "priv").
+    lib_sub_dir(Module, priv).
+
+-spec lib_temp_dir(Module :: module()) -> string().
+%%
+%% @doc Returns the path to an application's temporary scratch directory.
+%%
+%% Module MUST be compiled from a file in one of the application's main source
+%% directories, generally the project's "src" or "test" directory.
+%% Module's code IS NOT explicitly loaded by this operation.
+%%
+%% The returned path is to the "temp" directory in the working instance of the
+%% application, which may be in a number of places depending on the execution
+%% environment.
+%%
+%% Under Rebar this generally resolves to the absolute path of
+%% ```
+%%  <project-repo>/_build/<profile>/lib/<application>/temp
+%% '''
+%%
+%% An assertion error is raised if the path cannot be determined, is not a
+%% directory, or cannot be created as a directory.
+%%
+%% The result is logically analogous to
+%% ```
+%%  filename:join(
+%%      filename:dirname(filename:dirname(code:which(Module))),
+%%      "temp" )
+%% '''
+%%
+lib_temp_dir(Module) ->
+    Key = {?MODULE, ?FUNCTION_NAME, Module},
+    case erlang:get(Key) of
+        undefined ->
+            Lib = lib_dir(Module),
+            Dir = filename:join(Lib, "temp"),
+            filelib:is_dir(Dir) orelse ?assertMatch(ok, file:make_dir(Dir)),
+            erlang:put(Key, Dir),
+            Dir;
+        Val ->
+            Val
+    end.
 
 -spec lib_test_dir(Module :: module()) -> string() | false.
 %%
 %% @doc Returns the path to an application's working "test" directory.
 %%
 %% Module MUST be compiled from a file in one of the application's main source
-%% directories, generally the project's "src" directory.
+%% directories, generally the project's "src" or "test" directory.
 %% Module's code IS NOT explicitly loaded by this operation.
 %%
 %% The returned path is to the "test" directory in the working instance of the
-%% application, which may be in a number of places in different Rebar versions.
+%% application, which may be in a number of places depending on the execution
+%% environment.
 %%
-%% `false' is returned if the path cannot be determined, or does not exist,
-%% or is not a directory.
+%% Under Rebar this generally resolves to the absolute path of
+%% ```
+%%  <project-repo>/_build/<profile>/lib/<application>/test
+%% '''
 %%
-%% Logically, this is analogous to
+%% `false' is returned if the path does not exist or is not a directory.
+%%
+%% A successful result is logically analogous to
 %% ```
 %%  filename:join(
 %%      filename:dirname(filename:dirname(code:which(Module))),
@@ -221,7 +268,7 @@ lib_priv_dir(Module) ->
 %% '''
 %%
 lib_test_dir(Module) ->
-    lib_sub_dir(Module, "test").
+    lib_sub_dir(Module, test).
 
 %% ===================================================================
 %% Historically Exported
@@ -301,7 +348,9 @@ render_template(FileName, Context) ->
                 "No suitable mustache module loaded. "
                 "Run this test in a rebar context.");
         Mod ->
-            {ok, Bin} = file:read_file(FileName),
+            Res = erl_prim_loader:get_file(filename:absname(FileName)),
+            ?assertMatch({ok, _, _}, Res),
+            Bin = erlang:element(2, Res),
             render_template(Mod, Bin, Context)
     end.
 
@@ -410,27 +459,47 @@ mkey_string({Key, _} = Elem) when erlang:is_list(Key) ->
 mkey_string({Key, Val}) when erlang:is_binary(Key) ->
     {erlang:binary_to_list(Key), Val}.
 
--spec lib_sub_dir(Module :: module(), SubDir :: string()) -> string() | false.
+-spec lib_dir(Module :: module()) -> string().
 %
-% Find the specified sub-directory of the application containing Module.
+% Find the directory of the application containing Module.
 % We use the definitive code:get_object_code/1 initially, because we're often
 % going to be running in a test scenario in which code:which/1 is going to
 % return `cover_compiled', after which we'd have to resort to
 % code:get_object_code/1 anyway.
 %
+lib_dir(Module) ->
+    Key = {?MODULE, ?FUNCTION_NAME, Module},
+    case erlang:get(Key) of
+        undefined ->
+            Res = code:get_object_code(Module),
+            ?assertMatch({Module, _Bin, _Beam}, Res),
+            Dir = filename:dirname(filename:dirname(erlang:element(3, Res))),
+            erlang:put(Key, Dir),
+            Dir;
+        Val ->
+            Val
+    end.
+
+-spec lib_sub_dir(Module :: module(), SubDir :: atom()) -> string() | false.
+%
+% Find the specified sub-directory of the application containing Module.
+%
 lib_sub_dir(Module, SubDir) ->
-    case code:get_object_code(Module) of
-        {Module, _, Beam} ->
-            Lib = filename:dirname(filename:dirname(Beam)),
+    Key = {?MODULE, ?FUNCTION_NAME, Module, SubDir},
+    case erlang:get(Key) of
+        undefined ->
+            Lib = lib_dir(Module),
             Dir = filename:join(Lib, SubDir),
             case filelib:is_dir(Dir) of
                 true ->
+                    % Only cache it if it exists, in case it's created later.
+                    erlang:put(Key, Dir),
                     Dir;
                 _ ->
                     false
             end;
-        _ ->
-            false
+        Val ->
+            Val
     end.
 
 %% ===================================================================

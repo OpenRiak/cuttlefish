@@ -21,12 +21,11 @@
 -module(erlang_vm_schema_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--compile(export_all).
 
 %% basic schema test will check to make sure that all defaults from the schema
 %% make it into the generated app.config
 basic_schema_test() ->
-    %% The defaults are defined in ../priv/riak_kv.schema and multi_backend.schema.
+    %% The defaults are defined in priv/riak_kv.schema and multi_backend.schema.
     %% they are the files under test.
     Config = cuttlefish_unit:generate_templated_config(
         [cuttlefish_test_util:priv_file("erlang_vm.schema")], [], context()),

@@ -17,7 +17,6 @@
 %% under the License.
 %%
 %% -------------------------------------------------------------------
-
 %%
 %% @doc This is where the action is.
 %%
@@ -25,7 +24,6 @@
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
--compile(export_all).
 -endif.
 
 -define(FMT(F,A), lists:flatten(io_lib:format(F,A))).

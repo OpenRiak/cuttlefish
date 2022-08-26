@@ -1,8 +1,6 @@
 %% -------------------------------------------------------------------
 %%
-%% cuttlefish_effective: handles generating the effective configuration
-%%
-%% Copyright (c) 2014 Basho Technologies, Inc.  All Rights Reserved.
+%% Copyright (c) 2014-2017 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -19,6 +17,9 @@
 %% under the License.
 %%
 %% -------------------------------------------------------------------
+%%
+%% @doc Handles generating the effective configuration
+%%
 -module(cuttlefish_effective).
 
 -define(FMT(F,A), lists:flatten(io_lib:format(F,A))).
@@ -27,7 +28,6 @@
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
--compile(export_all).
 -endif.
 
 -spec build(cuttlefish_conf:conf(), cuttlefish_schema:schema(), [proplists:property()]) -> [string()].
@@ -138,7 +138,7 @@ proplist_to_kvcpaths(Prefix, Proplist) ->
 
 %% So this is gross, but is the simplest scheme for determining the
 %% type of data coming into this function. It doesn't really
-%% matter how we handle non-atoms because cuttlefish only creates 
+%% matter how we handle non-atoms because cuttlefish only creates
 %% proplists with atoms as the keynames.
 -spec canonicalize_key(atom() | list() | binary()) -> string().
 canonicalize_key(K) when is_atom(K) ->

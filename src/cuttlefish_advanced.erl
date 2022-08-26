@@ -1,8 +1,6 @@
 %% -------------------------------------------------------------------
 %%
-%% cuttlefish_advanced: handles merging of advanced configs
-%%
-%% Copyright (c) 2013 Basho Technologies, Inc.  All Rights Reserved.
+%% Copyright (c) 2013 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -19,14 +17,15 @@
 %% under the License.
 %%
 %% -------------------------------------------------------------------
-
+%%
+%% @doc handles merging of advanced configs
+%%
 -module(cuttlefish_advanced).
 
 -export([overlay/2]).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
--compile(export_all).
 -endif.
 
 %% @doc this function overlays the values in proplist 'AdvancedConfig'

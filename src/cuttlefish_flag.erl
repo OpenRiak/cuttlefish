@@ -1,9 +1,6 @@
 %% -------------------------------------------------------------------
 %%
-%% cuttlefish_flag: datatype for simple boolean settings with
-%%   customizable names and values
-%%
-%% Copyright (c) 2013 Basho Technologies, Inc.  All Rights Reserved.
+%% Copyright (c) 2013-2014 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -20,12 +17,13 @@
 %% under the License.
 %%
 %% -------------------------------------------------------------------
-
+%%
+%% @doc Datatype for simple boolean settings with customizable names and values
+%%
 -module(cuttlefish_flag).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
--compile(export_all).
 -endif.
 
 -export([

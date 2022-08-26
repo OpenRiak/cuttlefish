@@ -1,8 +1,6 @@
 %% -------------------------------------------------------------------
 %%
-%% cuttlefish_validator: models a cuttlefish validator
-%%
-%% Copyright (c) 2013 Basho Technologies, Inc.  All Rights Reserved.
+%% Copyright (c) 2013-2014 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -19,11 +17,13 @@
 %% under the License.
 %%
 %% -------------------------------------------------------------------
+%%
+%% @doc models a cuttlefish validator
+%%
 -module(cuttlefish_validator).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
--compile(export_all).
 -endif.
 
 -record(validator, {

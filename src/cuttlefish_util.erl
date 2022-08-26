@@ -1,8 +1,6 @@
 %% -------------------------------------------------------------------
 %%
-%% cuttlefish_util: various cuttlefish utility functions
-%%
-%% Copyright (c) 2013 Basho Technologies, Inc.  All Rights Reserved.
+%% Copyright (c) 2013-2014 Basho Technologies, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -19,11 +17,13 @@
 %% under the License.
 %%
 %% -------------------------------------------------------------------
+%%
+%% @doc various cuttlefish utility functions
+%%
 -module(cuttlefish_util).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
--compile(export_all).
 -endif.
 
 -export([

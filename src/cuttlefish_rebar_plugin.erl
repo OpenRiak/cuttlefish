@@ -17,7 +17,6 @@
 %% under the License.
 %%
 %% -------------------------------------------------------------------
-
 %%
 %% @doc Rebar cuttlefish plugin to generate an application's default .conf
 %%      file as part of the build.
@@ -131,7 +130,7 @@ rebar_info() ->
         2 ->
             {Vsn, rebar_config, rebar_rel_utils};
         3 ->
-            {Vsn, renar_api, rebar_state, rebar_app_info};
+            {Vsn, rebar_api, rebar_state, rebar_app_info};
         _ ->
             Vsn
     end.
