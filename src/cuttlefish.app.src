@@ -1,8 +1,8 @@
 {application, cuttlefish, [
     {description,   "cuttlefish configuration abstraction"},
-    {vsn,           "2.1.0.3"},
+    {vsn,           "3.0.1.1"},
     {registered,    []},
-    {applications,  [kernel, sasl, stdlib, syntax_tools, getopt, lager]},
+    {applications,  [kernel, stdlib, syntax_tools, getopt]},
     {env,           []},
     {modules,       []},
     {licenses,      ["Apache 2.0"]},

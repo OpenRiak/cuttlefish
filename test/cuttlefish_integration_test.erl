@@ -20,6 +20,7 @@
 
 -module(cuttlefish_integration_test).
 
+-include_lib("kernel/include/logger.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 %% This test generates a default .conf file from the riak.schema.
@@ -117,7 +118,6 @@ all_the_marbles_test() ->
     ok.
 
 multibackend_test() ->
-    lager:start(),
     Schema = cuttlefish_schema:files([
         cuttlefish_test_util:test_file("riak.schema"),
         cuttlefish_test_util:test_file("multi_backend.schema") ]),
@@ -139,7 +139,7 @@ multibackend_test() ->
     Multi = proplists:get_value(multi_backend, KV),
 
     {<<"bitcask_mult">>, riak_kv_bitcask_backend, BitcaskProps} = lists:keyfind(<<"bitcask_mult">>, 1, Multi),
-    lager:info("BitcaskProps: ~p", [BitcaskProps]),
+    _ = ?LOG_INFO("BitcaskProps: ~p", [BitcaskProps]),
     ?assertEqual("/path/to/dat/cask", proplists:get_value(data_root, BitcaskProps)),
     ?assertEqual(4,                   proplists:get_value(open_timeout, BitcaskProps)),
     ?assertEqual(2147483648,          proplists:get_value(max_file_size, BitcaskProps)),
@@ -190,7 +190,6 @@ multibackend_test() ->
     ok.
 
 unset_translation_test() ->
-    lager:start(),
     Schema = cuttlefish_schema:files(
         [cuttlefish_test_util:test_file("unset_translation.schema")]),
     Conf = [
@@ -198,11 +197,10 @@ unset_translation_test() ->
     ],
     NewConfig = cuttlefish_generator:map(Schema, Conf),
     Props = proplists:get_value(erlang, NewConfig),
-    lager:info("~p", [NewConfig]),
+    _ = ?LOG_INFO("~p", [NewConfig]),
     ?assertEqual(8, proplists:get_value(key, Props)).
 
 not_found_error_test() ->
-    lager:start(),
     Schema = cuttlefish_schema:files(
         [cuttlefish_test_util:test_file("throw_not_found.schema")]),
     Conf = [],
@@ -210,7 +208,6 @@ not_found_error_test() ->
     ?assertMatch({error, apply_translations, _}, NewConfig).
 
 duration_test() ->
-    lager:start(),
     Schema = cuttlefish_schema:files(
         [cuttlefish_test_util:test_file("durations.schema")]),
 

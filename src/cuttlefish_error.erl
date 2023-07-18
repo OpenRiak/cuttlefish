@@ -22,6 +22,8 @@
 %%
 -module(cuttlefish_error).
 
+-include_lib("kernel/include/logger.hrl").
+
 -type error() :: {'error', {atom(), term()}}.
 -type errorlist() :: {'errorlist', [error()]}.
 -export_type([error/0, errorlist/0]).
@@ -178,12 +180,7 @@ print(FormatString, Args) ->
 print({error, ErrorTerm}) ->
     print(lists:flatten(xlate(ErrorTerm)));
 print(String) ->
-    case lager:error("~s", [String]) of
-        {error, lager_not_running} ->
-            io:format("~s~n", [String]),
-            ok;
-        ok -> ok
-    end.
+    ?LOG_ERROR("~s", [String]).
 
 -ifdef(TEST).
 
