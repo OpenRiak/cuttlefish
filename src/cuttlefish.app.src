@@ -2,7 +2,7 @@
              [{description,"cuttlefish configuration abstraction"},
               {vsn,"3.0.1"},
               {registered,[]},
-              {applications,[kernel,stdlib]},
+              {applications,[kernel, stdlib, syntax_tools, getopt]},
               {env,[]},
               {licenses,["Apache"]},
               {links,[{"GitHub","https://github.com/basho/cuttlefish"}]}]}.
