@@ -269,7 +269,7 @@ chase_message(Message, [{error, ErrorTerm}|T], Errors) ->
 %%-spec dump_to_file(any(), string()) -> ok.
 %%dump_to_file(ErlangTerm, Filename) ->
 %%    {ok, S} = file:open(Filename, [write,append]),
-%%    io:format(S, "~p~n", [ErlangTerm]),
+%%    io:format(S, "~tp~n", [ErlangTerm]),
 %%    _ = file:close(S),
 %%    ok.
 
@@ -502,8 +502,7 @@ multiple_schema_generate_templated_config_test() ->
 
     Config = cuttlefish_unit:generate_templated_config(
         Schema, [], Context, PrereqSchema),
-    _ = ?LOG_ERROR("~p", [Config]),
-    assert_config(Config, "app_a.setting_b", "/c/mustache/a.b"),
-    ok.
+    ?LOG_ERROR("~tp", [Config]),
+    assert_config(Config, "app_a.setting_b", "/c/mustache/a.b").
 
 -endif.
