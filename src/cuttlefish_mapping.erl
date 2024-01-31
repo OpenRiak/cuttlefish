@@ -1,6 +1,7 @@
 %% -------------------------------------------------------------------
 %%
 %% Copyright (c) 2013-2016 Basho Technologies, Inc.
+%% Copyright (c) 2023-2024 Workday, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -39,7 +40,9 @@
         validators = [] :: [string()],
         is_merge = false :: boolean(),
         see = [] :: [cuttlefish_variable:variable()],
-        hidden = false :: boolean()
+        hidden = false :: boolean(),
+        obsolete = false :: boolean() | string(),
+        deprecated = false :: boolean() | string()
     }).
 
 -type mapping() :: #mapping{}.
@@ -59,6 +62,8 @@
     datatype/1,
     level/1,
     hidden/1,
+    obsolete/1,
+    deprecated/1,
     doc/1,
     see/1,
     include_default/1,
@@ -67,7 +72,7 @@
     validators/1,
     validators/2,
     remove_all_but_first/2
-    ]).
+]).
 
 -spec parse(raw_mapping()) -> mapping() | cuttlefish_error:error().
 parse({mapping, Variable, Mapping, Proplist}) ->
@@ -93,6 +98,15 @@ parse({mapping, Variable, Mapping, Proplist}) ->
         {error, _} ->
             Datatype;
         _ ->
+            %% 'hidden' is implied if either 'obsolete' or 'deprecated'
+            %% is specified.
+            Deprecated = bool_or_string(
+                proplists:get_value(deprecated, Proplist, false)),
+            Obsolete = bool_or_string(
+                proplists:get_value(obsolete, Proplist, false)),
+            Hidden = is_true_or_string(Obsolete)
+                orelse is_true_or_string(Deprecated)
+                orelse proplists:get_value(hidden, Proplist, false),
             #mapping{
                 variable = cuttlefish_variable:tokenize(Variable),
                 default = proplists:get_value(default, Proplist),
@@ -105,7 +119,9 @@ parse({mapping, Variable, Mapping, Proplist}) ->
                 include_default = proplists:get_value(include_default, Proplist),
                 new_conf_value = proplists:get_value(new_conf_value, Proplist),
                 validators = proplists:get_value(validators, Proplist, []),
-                hidden = proplists:get_value(hidden, Proplist, false)
+                hidden = Hidden,
+                obsolete = Obsolete,
+                deprecated = Deprecated
             }
     end;
 parse(X) ->
@@ -138,6 +154,12 @@ parse_and_merge({mapping, Variable, _Mapping, Props} = MappingSource, Mappings) 
 -spec merge(raw_mapping(), mapping()) -> mapping().
 merge(NewMappingSource, OldMapping) ->
     MergeMapping = parse(NewMappingSource),
+    %% Even with a merge, re-calculate the 'hidden' attribute, because we don't
+    %% know what combination of other attributes will make it through the merge.
+    Deprecated = choose(deprecated, NewMappingSource, MergeMapping, OldMapping),
+    Obsolete = choose(obsolete, NewMappingSource, MergeMapping, OldMapping),
+    Hidden = is_true_or_string(Obsolete) orelse is_true_or_string(Deprecated)
+        orelse choose(hidden, NewMappingSource, MergeMapping, OldMapping),
     #mapping{
         variable = variable(MergeMapping),
         mapping = mapping(MergeMapping),
@@ -150,7 +172,9 @@ merge(NewMappingSource, OldMapping) ->
         new_conf_value = choose(include_default, NewMappingSource, MergeMapping, OldMapping),
         validators = choose(validators, NewMappingSource, MergeMapping, OldMapping),
         see = choose(see, NewMappingSource, MergeMapping, OldMapping),
-        hidden = choose(hidden, NewMappingSource, MergeMapping, OldMapping)
+        hidden = Hidden,
+        obsolete = Obsolete,
+        deprecated = Deprecated
     }.
 
 choose(Field, {_, _, _, PreParseMergeProps}, MergeMapping, OldMapping) ->
@@ -168,6 +192,26 @@ choose(Field, {_, _, _, PreParseMergeProps}, MergeMapping, OldMapping) ->
         old ->
             ?MODULE:Field(OldMapping)
     end.
+
+-spec bool_or_string(term()) -> boolean() | string().
+bool_or_string(Val) when erlang:is_boolean(Val) ->
+    Val;
+bool_or_string(Val) when erlang:is_list(Val) ->
+    case io_lib:deep_char_list(Val) of
+        true ->
+            Val;
+        False ->
+            False
+    end;
+bool_or_string(_) ->
+    false.
+
+-spec is_true_or_string(term()) -> boolean().
+% Only valid on a Val returned from bool_or_string(Val).
+is_true_or_string(true) ->
+    true;
+is_true_or_string(Val) ->
+    erlang:is_list(Val).
 
 -spec is_mapping(any()) -> boolean().
 is_mapping(M) ->
@@ -201,6 +245,12 @@ level(M) -> M#mapping.level.
 
 -spec hidden(mapping()) -> boolean().
 hidden(M) -> M#mapping.hidden.
+
+-spec obsolete(mapping()) -> boolean() | string().
+obsolete(M) -> M#mapping.obsolete.
+
+-spec deprecated(mapping()) -> boolean() | string().
+deprecated(M) -> M#mapping.deprecated.
 
 -spec doc(mapping()) -> [string()].
 doc(M) -> M#mapping.doc.
@@ -294,6 +344,108 @@ mapping_test() ->
     ?assertEqual(true, hidden(Record)),
 
     ok.
+
+deprecated_test() ->
+    %% Most of this is validated in mapping_test/0, so we only check the
+    %% parts affected by the 'deprecated' attribute.
+
+    %% Bare deprecated attribute
+    Input1 = {
+        mapping,
+        "conf.key",
+        "erlang.key",
+        [
+            {default, "default value"},
+            {datatype, {enum, [on, off]}},
+            {commented, "commented value"},
+            {include_default, "default_substitution"},
+            {new_conf_value, "config_file_val"},
+            {doc, ["documentation", "for feature"]},
+            {validators, ["valid.the.impailer"]},
+            deprecated
+        ]
+    },
+    Record1 = parse(Input1),
+    % record fields
+    ?assertMatch(true, Record1#mapping.deprecated),
+    ?assertMatch(true, Record1#mapping.hidden),
+    % functions should be the same
+    ?assertMatch(true, deprecated(Record1)),
+    ?assertMatch(true, hidden(Record1)),
+
+    %% Annotated deprecated attribute
+    Input2 = {
+        mapping,
+        "conf.key",
+        "erlang.key",
+        [
+            {default, "default value"},
+            {datatype, {enum, [on, off]}},
+            {commented, "commented value"},
+            {include_default, "default_substitution"},
+            {new_conf_value, "config_file_val"},
+            {doc, ["documentation", "for feature"]},
+            {validators, ["valid.the.impailer"]},
+            {deprecated, "use 'foo' instead"}
+        ]
+    },
+    Record2 = parse(Input2),
+    % record fields
+    ?assertMatch("use 'foo' instead", Record2#mapping.deprecated),
+    ?assertMatch(true, Record2#mapping.hidden),
+    % functions should be the same
+    ?assertMatch("use 'foo' instead", deprecated(Record2)),
+    ?assertMatch(true, hidden(Record2)).
+
+obsolete_test() ->
+    %% Most of this is validated in mapping_test/0, so we only check the
+    %% parts affected by the 'obsolete' attribute.
+
+    Input1 = {
+        mapping,
+        "conf.key",
+        "erlang.key",
+        [
+            {default, "default value"},
+            {datatype, {enum, [on, off]}},
+            {commented, "commented value"},
+            {include_default, "default_substitution"},
+            {new_conf_value, "config_file_val"},
+            {doc, ["documentation", "for feature"]},
+            {validators, ["valid.the.impailer"]},
+            obsolete
+        ]
+    },
+    Record1 = parse(Input1),
+    % record fields
+    ?assertMatch(true, Record1#mapping.obsolete),
+    ?assertMatch(true, Record1#mapping.hidden),
+    % functions should be the same
+    ?assertMatch(true, obsolete(Record1)),
+    ?assertMatch(true, hidden(Record1)),
+
+    Input2 = {
+        mapping,
+        "conf.key",
+        "erlang.key",
+        [
+            {default, "default value"},
+            {datatype, {enum, [on, off]}},
+            {commented, "commented value"},
+            {include_default, "default_substitution"},
+            {new_conf_value, "config_file_val"},
+            {doc, ["documentation", "for feature"]},
+            {validators, ["valid.the.impailer"]},
+            {obsolete, false}
+        ]
+    },
+    Record2 = parse(Input2),
+    % record fields
+    ?assertMatch(false, Record2#mapping.obsolete),
+    ?assertMatch(false, Record2#mapping.hidden),
+    % functions should be the same
+    ?assertMatch(false, obsolete(Record2)),
+    ?assertMatch(false, hidden(Record2)).
 
 replace_test() ->
     Element1 = parse({

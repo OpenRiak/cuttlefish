@@ -11,7 +11,8 @@ where is the most up-to-date, maintained version is.
 
 ## Supported Erlang/OTP Versions
 
- * Cuttlefish 3.1.0 and later versions supports Erlang 24 and 25
+ * Cuttlefish 3.2.5 and later versions support Erlang 24 through 26
+ * Cuttlefish 3.1.0 and later versions support Erlang 24 and 25
  * Cuttlefish 2.7.0 and later versions support Erlang 22 through 24
  * Cuttlefish releases up to and including 2.6.0 support Erlang/OTP 17 through 23
 
@@ -74,7 +75,7 @@ level.
 ## What's it look like to Erlang Developers?
 
 You can learn more about the technical implementation of schemas at:
-https://github.com/basho/cuttlefish/wiki/Cuttlefish-for-Erlang-Developers
+[Cuttlefish-for-Erlang-Developers](https://github.com/Kyorai/cuttlefish/wiki/Cuttlefish-for-Erlang-Developers)
 
 ## What's it look like to users?
 
@@ -91,12 +92,12 @@ log.syslog = on
 ```
 
 More information for users here:
-https://github.com/basho/cuttlefish/wiki/Cuttlefish-for-Application-Users
+[Cuttlefish-for-Application-Users](https://github.com/Kyorai/cuttlefish/wiki/Cuttlefish-for-Application-Users)
 
 ## What's it look like to application packagers?
 
-* [node_package](https://github.com/basho/cuttlefish/wiki/Cuttlefish-for-node_package-users)
-* [non node_package](https://github.com/basho/cuttlefish/wiki/Cuttlefish-for-non-node_package-users)
+* [node_package](https://github.com/Kyorai/cuttlefish/wiki/Cuttlefish-for-node_package-users)
+* [non node_package](https://github.com/Kyorai/cuttlefish/wiki/Cuttlefish-for-non-node_package-users)
 
 ## Current Status
 
@@ -105,7 +106,7 @@ Cuttlefish is ready for production deployments.
 ## Re-generating parser
 
 ```
-rebar3 as dev neotoma compile
+rebar3 as dev neotoma
 ```
 
 Please see the *NOTE* in `src/conf_parse.peg` as well.

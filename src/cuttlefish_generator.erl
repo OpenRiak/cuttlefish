@@ -1,6 +1,7 @@
 %% -------------------------------------------------------------------
 %%
 %% Copyright (c) 2013-2017 Basho Technologies, Inc.
+%% Copyright (c) 2023-2024 Workday, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -135,32 +136,55 @@ apply_mappings({Translations, Mappings, _Validators}, Conf) ->
     %% if a user didn't actually configure this setting in the .conf file and
     %% there's no default in the schema, then there won't be enough information
     %% during the translation phase to succeed, so we'll earmark it to be skipped
-    {DirectMappings, {TranslationsToMaybeDrop, TranslationsToKeep}} = lists:foldr(
-        fun(MappingRecord, {ConfAcc, {MaybeDrop, Keep}}) ->
-            Mapping = cuttlefish_mapping:mapping(MappingRecord),
-            Default = cuttlefish_mapping:default(MappingRecord),
-            Variable = cuttlefish_mapping:variable(MappingRecord),
-            case {
-                Default =/= undefined orelse cuttlefish_conf:is_variable_defined(Variable, Conf),
-                lists:any(
-                    fun(T) ->
-                        cuttlefish_translation:mapping(T) =:= Mapping
-                    end,
-                    Translations)
-                } of
-                {true, false} ->
-                    Tokens = cuttlefish_variable:tokenize(Mapping),
-                    NewValue = proplists:get_value(Variable, Conf),
-                    {set_value(Tokens, ConfAcc, NewValue),
-                     {MaybeDrop, ordsets:add_element(Mapping,Keep)}};
-                {true, true} ->
-                    {ConfAcc, {MaybeDrop, ordsets:add_element(Mapping,Keep)}};
-                _ ->
-                    {ConfAcc, {ordsets:add_element(Mapping,MaybeDrop), Keep}}
-            end
-        end,
-        {[], {ordsets:new(),ordsets:new()}},
-        Mappings),
+    TransMappings = [cuttlefish_translation:mapping(T) || T <- Translations],
+    MapFun = fun(MappingRecord, {ConfAcc, {MaybeDrop, Keep}}) ->
+        Mapping = cuttlefish_mapping:mapping(MappingRecord),
+        Default = cuttlefish_mapping:default(MappingRecord),
+        Variable = cuttlefish_mapping:variable(MappingRecord),
+        Include = Default =/= undefined orelse
+            cuttlefish_conf:is_variable_defined(Variable, Conf),
+        case Include of
+            true ->
+                case cuttlefish_mapping:obsolete(MappingRecord) of
+                    true ->
+                        ?LOG_WARNING("Key '~ts' is obsolete and will be ignored,"
+                            " please remove it from your configuration.",
+                            [cuttlefish_variable:format(Variable)]),
+                        {ConfAcc, {ordsets:add_element(Mapping, MaybeDrop), Keep}};
+                    OMsg when erlang:is_list(OMsg) ->
+                        ?LOG_WARNING("Key '~ts' is obsolete and will be ignored,"
+                            " please remove it from your configuration. ~ts",
+                            [cuttlefish_variable:format(Variable), OMsg]),
+                        {ConfAcc, {ordsets:add_element(Mapping, MaybeDrop), Keep}};
+                    _ ->
+                        case cuttlefish_mapping:deprecated(MappingRecord) of
+                            true ->
+                                ?LOG_WARNING("Key '~ts' is deprecated,"
+                                    " please remove it from your configuration.",
+                                    [cuttlefish_variable:format(Variable)]);
+                            DMsg when erlang:is_list(DMsg) ->
+                                ?LOG_WARNING("Key '~ts' is deprecated,"
+                                    " please remove it from your configuration. ~ts",
+                                    [cuttlefish_variable:format(Variable), DMsg]);
+                            _ ->
+                                ok
+                        end,
+                        NewState = {MaybeDrop, ordsets:add_element(Mapping, Keep)},
+                        case lists:member(Mapping, TransMappings) of
+                            true ->
+                                {ConfAcc, NewState};
+                            _ ->
+                                Tokens = cuttlefish_variable:tokenize(Mapping),
+                                NewValue = proplists:get_value(Variable, Conf),
+                                {set_value(Tokens, ConfAcc, NewValue), NewState}
+                        end
+                end;
+            _ ->
+                {ConfAcc, {ordsets:add_element(Mapping, MaybeDrop), Keep}}
+        end
+    end,
+    {DirectMappings, {TranslationsToMaybeDrop, TranslationsToKeep}} =
+        lists:foldr(MapFun, {[], {ordsets:new(),ordsets:new()}}, Mappings),
     _ = ?LOG_DEBUG("Applied 1:1 Mappings"),
 
     TranslationsToDrop = TranslationsToMaybeDrop -- TranslationsToKeep,
@@ -267,6 +291,9 @@ set_value([HeadToken|MoreTokens], PList, NewValue) ->
 
 %% @doc adds default values from the schema when something's not
 %% defined in the Conf, to give a complete app.config
+-spec add_defaults(
+    Conf :: cuttlefish_conf:conf(), Mappings :: list(cuttlefish_mapping:mapping()) )
+        -> cuttlefish_conf:conf().
 add_defaults(Conf, Mappings) ->
     Prefixes = get_possible_values_for_fuzzy_matches(Conf, Mappings),
 
@@ -575,12 +602,17 @@ transform_extended_type({DT, AcceptableValue}, Value) ->
         {error, Term} ->
             {error, Term}
     end.
+
 %% Ok, this is tricky
 %% There are three scenarios we have to deal with:
 %% 1. The mapping is there! -> return mapping
 %% 2. The mapping is not there -> error
 %% 3. The mapping is there, but the key in the schema contains a $.
 %%      (fuzzy match)
+-spec find_mapping(
+    Variable :: cuttlefish_variable:variable(),
+    Mappings :: list(cuttlefish_mapping:mapping()) )
+        -> cuttlefish_mapping:mapping() | cuttlefish_error:error().
 find_mapping([H|_]=Variable, Mappings) when is_list(H) ->
     {HardMappings, FuzzyMappings} =  lists:foldl(
         fun(Mapping, {HM, FM}) ->
@@ -607,7 +639,7 @@ find_mapping(Variable, Mappings) ->
     find_mapping(cuttlefish_variable:tokenize(Variable), Mappings).
 
 -spec run_validations(cuttlefish_schema:schema(), cuttlefish_conf:conf())
-    -> boolean()|list(cuttlefish_error:error()).
+    -> true | list(true | cuttlefish_error:error()).
 run_validations({_, Mappings, Validators}, Conf) ->
     Validations = lists:flatten([ begin
         Vs = cuttlefish_mapping:validators(M, Validators),

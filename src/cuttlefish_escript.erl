@@ -75,6 +75,7 @@ parse_and_command(Args) ->
     {Command, ParsedArgs, ExtraArgs}.
 
 %% @doc main method for generating erlang term config files
+-spec main(Args :: list(string())) -> ok.
 main(Args) ->
     {Command, ParsedArgs, Extra} = parse_and_command(Args),
 

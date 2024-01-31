@@ -1,6 +1,7 @@
 %% -------------------------------------------------------------------
 %%
 %% Copyright (c) 2013-2016 Basho Technologies, Inc.
+%% Copyright (c) 2023-2024 Workday, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -22,21 +23,20 @@
 %%
 -module(cuttlefish).
 
--include_lib("kernel/include/logger.hrl").
+-export([
+    conf_get/2, conf_get/3,
+    deprecated/2, deprecated/3,
+    invalid/1,
+    obsolete/2, obsolete/3,
+    otp/2, otp/3,
+    unset/0,
+    warn/1
+]).
 
+-include_lib("kernel/include/logger.hrl").
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
-
--export([
-    conf_get/2,
-    conf_get/3,
-    unset/0,
-    invalid/1,
-    otp/2,
-    otp/3,
-    warn/1
-]).
 
 % @doc If DesiredMinimum =&lt; the OTP you're running, then return
 % IfGreaterOrEqual, otherwise IfLessThan.
@@ -123,9 +123,56 @@ invalid(Reason) ->
 
 %% @doc When called inside a translation, results in a warning message
 %% being logged.
--spec warn(iodata()) -> ok.
+-spec warn(Str :: unicode:chardata()) -> ok.
 warn(Str) ->
-    ?LOG_WARNING(Str, []).
+    logger:warning("~ts", [Str]).
+
+%% @doc When called inside a translation, logs a warning that input
+%% configuration is deprecated.
+-spec deprecated(
+    ConfKey :: unicode:chardata(), ConfVal :: term() ) -> ok.
+deprecated(ConfKey, ConfVal) ->
+    logger:warning("Usage '~ts = ~0tp' is deprecated,"
+        " please remove it from your .conf file.",
+        [cuttlefish_variable:format(ConfKey), ConfVal]).
+
+%% @doc When called inside a translation, logs a warning that input
+%% configuration is deprecated, with a supplied elaboration.
+-spec deprecated(
+    ConfKey :: unicode:chardata(), ConfVal :: term(),
+    Msg :: unicode:chardata() ) -> ok.
+deprecated(ConfKey, ConfVal, Msg) ->
+    logger:warning("Usage '~ts = ~0tp' is deprecated,"
+        " please remove it from your .conf file. ~ts",
+        [cuttlefish_variable:format(ConfKey), ConfVal, Msg]).
+
+%% @doc When called inside a translation, logs a notice that input
+%% configuration is obsolete.
+%%
+%% Tells cuttlefish to omit the Erlang setting from the generated
+%% configuration.
+-spec obsolete(
+    ConfKey :: unicode:chardata(), ConfVal :: term() ) -> no_return().
+obsolete(ConfKey, ConfVal) ->
+    _ = logger:warning("Usage '~ts = ~0tp' is obsolete and will be ignored,"
+        " please remove it from your .conf file.",
+        [cuttlefish_variable:format(ConfKey), ConfVal]),
+    unset().
+
+%% @doc When called inside a translation, logs a notice that input
+%% configuration is obsolete, with a supplied elaboration.
+%%
+%% Tells cuttlefish to omit the Erlang setting from the generated
+%% configuration.
+-spec obsolete(
+    ConfKey :: unicode:chardata(), ConfVal :: term(),
+    Msg :: unicode:chardata() ) -> no_return().
+obsolete(ConfKey, ConfVal, Msg) ->
+    _ = logger:warning("Usage '~ts = ~0tp' is obsolete and will be ignored,"
+        " please remove it from your .conf file. ~ts",
+        [cuttlefish_variable:format(ConfKey), ConfVal, Msg]),
+    unset().
+
 
 -ifdef(TEST).
 

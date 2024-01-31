@@ -11,13 +11,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ macos-latest, ubuntu-latest, windows-latest ]
+        os: [ macos-latest, ubuntu-latest, windows-2022 ]
         otp: ['24', '26']
         rebar: ['3.22']
 
     steps:
       - uses: actions/checkout@v3
       - uses: erlef/setup-beam@v1
+        id: install-erlang
         with:
           otp-version: ${{ matrix.otp }}
           rebar3-version: ${{ matrix.rebar }}

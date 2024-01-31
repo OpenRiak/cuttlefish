@@ -22,15 +22,17 @@
 %%
 -module(cuttlefish_bytesize).
 
+-export([parse/1, to_string/1]).
+
 -define(KILOBYTE, 1024).
 -define(MEGABYTE, 1048576).
 -define(GIGABYTE, 1073741824).
 
+-type multiplier() :: ?KILOBYTE | ?MEGABYTE | ?GIGABYTE.
+
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
-
--export([parse/1, to_string/1]).
 
 %% @doc turns an integer of bytes into a string.
 %% Will use the smallest unit to not lose precision.
@@ -61,8 +63,8 @@ parse(String) ->
         BSize -> cuttlefish_util:numerify(lists:reverse(BSize))
     end.
 
--spec bmult(number()|cuttlefish_error:error(), integer()) ->
-                   number()|cuttlefish_error:error().
+-spec bmult(number() | cuttlefish_error:error(), multiplier()) ->
+                   number() | cuttlefish_error:error().
 bmult({error, _ErrorTerm}=Error, _Mult) ->
     Error;
 bmult(Quantity, Multiplier) ->

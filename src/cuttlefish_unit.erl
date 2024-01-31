@@ -334,8 +334,11 @@ render_template(FileName, Context) ->
 %% Internal
 %% ===================================================================
 
+-type mustache_mod() :: bbmustache | mustache | rebar_mustache.
+-define(MUSTACHE_MODS, [bbmustache, mustache, rebar_mustache]).
+
 -spec render_template(
-        Mustache    :: module(),
+        Mustache    :: mustache_mod(),
         Template    :: binary(),
         Context     :: mustache_ctx())
             -> string().
@@ -344,8 +347,6 @@ render_template(FileName, Context) ->
 % xref and dialyzer don't complain. If running in Rebar there will be a
 % suitable module available at runtime, but usually there won't be an explicit
 % project dependency on one.
-%
-% Unicode support is sketchy, as it is throughout cuttlefish. Someday...
 %
 render_template(bbmustache = Mustache, Template, Context) ->
     % It's unclear whether there could be supplementary UTF-8 bytes that could
@@ -371,7 +372,7 @@ render_template(Mustache, Template, Context) ->
     end,
     Mustache:render(Data, mustache_context(Mustache, Context)).
 
--spec find_mustache() -> module() | false.
+-spec find_mustache() -> mustache_mod() | false.
 %
 % Finds a module that is likely to be a mustache implementation that
 % render_template/3 knows how to use.
@@ -383,14 +384,14 @@ find_mustache() ->
     Key = {?MODULE, mustache_module},
     case erlang:get(Key) of
         undefined ->
-            Ret = find_mustache([bbmustache, mustache, rebar_mustache]),
+            Ret = find_mustache(?MUSTACHE_MODS),
             _ = erlang:put(Key, Ret),
             Ret;
         Val ->
             Val
     end.
 
--spec find_mustache(Mods :: [module()]) -> module() | false.
+-spec find_mustache(Mods :: list(mustache_mod())) -> mustache_mod() | false.
 %
 % Let find_mustache/0 call this, not much use anywhere else.
 %
@@ -409,7 +410,8 @@ find_mustache([Mod | Mods]) ->
 find_mustache([]) ->
     false.
 
--spec mustache_context(Module :: module(), Context :: mustache_ctx()) -> term().
+-spec mustache_context(
+    Module :: mustache_mod(), Context :: mustache_ctx()) -> term().
 %
 % Returns an appropriate mapping context for the mustache Module.
 %

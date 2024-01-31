@@ -1,12 +1,17 @@
 {application, cuttlefish, [
     {description,   "cuttlefish configuration abstraction"},
-    {vsn,           "3.2.0.1"},
+    %% This *should* advance the minor, not patch, version, but we're trying
+    %% to stay within the bounds of the Kyorai version progression in hopes
+    %% of having a consolidated version at some point down the road.
+    %% The changes being introduced *are* backward-compatible, so I'm using
+    %% .5+ as our patch version until we get synced up with them.
+    {vsn,           "3.2.5"},
     {registered,    []},
     {applications,  [kernel, stdlib, syntax_tools, getopt]},
     {env,           []},
     {licenses,      ["Apache 2.0"]},
     {links,         [
-        {"GitHub",  "https://github.com/basho/cuttlefish"},
-        {"GitHub",  "https://github.com/Kyorai/cuttlefish"}
+        {"GitHub",  "https://github.com/Kyorai/cuttlefish"},
+        {"GitHub",  "https://github.com/basho/cuttlefish"}
     ]}
 ]}.

@@ -1,6 +1,7 @@
 %% -------------------------------------------------------------------
 %%
 %% Copyright (c) 2013-2017 Basho Technologies, Inc.
+%% Copyright (c) 2023-2024 Workday, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -38,6 +39,7 @@
 
 -define(FMT(F, Args), lists:flatten(io_lib:format(F, Args))).
 
+-spec is_variable_defined(cuttlefish_variable:variable(), conf()) -> boolean().
 is_variable_defined(VariableDef, Conf) ->
     lists:any(fun({X, _}) -> cuttlefish_variable:is_fuzzy_match(X, VariableDef) end, Conf).
 
@@ -171,7 +173,8 @@ generate_element(MappingRecord) ->
     case Level of
         basic -> ok;
         Level ->
-            ?LOG_WARNING("{level, ~tp} has been deprecated. Use 'hidden' or '{hidden, true}'", [Level])
+            ?LOG_WARNING("{level, ~tp} has been deprecated."
+            " Use 'hidden' or '{hidden, true}'", [Level])
     end,
 
     case generate_element(Hidden, Level, Default, Commented) of
@@ -400,8 +403,23 @@ generate_element_hidden_test() ->
     _ = cuttlefish_test_logging:bounce(warning),
     assert_no_output(hidden),
     assert_no_output({hidden, true}),
-    ?assertEqual([], cuttlefish_test_logging:get_logs()),
-    ok.
+    ?assertEqual([], cuttlefish_test_logging:get_logs()).
+
+generate_element_deprecated_test() ->
+    _ = cuttlefish_test_logging:set_up(),
+    _ = cuttlefish_test_logging:bounce(warning),
+    assert_no_output(deprecated),
+    assert_no_output({deprecated, true}),
+    assert_no_output({deprecated, "use 'foo' instead"}),
+    ?assertEqual([], cuttlefish_test_logging:get_logs()).
+
+generate_element_obsolete_test() ->
+    _ = cuttlefish_test_logging:set_up(),
+    _ = cuttlefish_test_logging:bounce(warning),
+    assert_no_output(obsolete),
+    assert_no_output({obsolete, true}),
+    assert_no_output({obsolete, "use 'bar' instead"}),
+    ?assertEqual([], cuttlefish_test_logging:get_logs()).
 
 included_file_test() ->
     Conf = file(cuttlefish_test_util:test_file("include_file.conf")),
