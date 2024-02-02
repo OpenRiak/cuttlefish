@@ -326,8 +326,7 @@ comment_parser_test() ->
     ok.
 
 bad_file_test() ->
-    _ = cuttlefish_test_logging:set_up(),
-    _ = cuttlefish_test_logging:bounce(),
+    ?assertMatch(ok, cuttlefish_test_logging:start()),
     BadSch = cuttlefish_test_util:test_file("bad_erlang.schema"),
     {errorlist, ErrorList} = file(BadSch),
 
@@ -337,14 +336,13 @@ bad_file_test() ->
     ?assertMatch({match, _}, re:run(L1, "Error scanning erlang near line 10")),
     ?assertMatch({match, _}, re:run(L2, "Error parsing schema: " ++ BadSch)),
 
-    ?assertEqual([
+    ?assertMatch([
         {error, {erl_scan, 10}}
         ], ErrorList),
-    ok.
+    ?assertMatch(ok, cuttlefish_test_logging:stop()).
 
 parse_invalid_erlang_test() ->
-    _ = cuttlefish_test_logging:set_up(),
-    _ = cuttlefish_test_logging:bounce(),
+    ?assertMatch(ok, cuttlefish_test_logging:start()),
     SchemaString = lists:flatten([
             "%% @doc some doc\n",
             "%% the doc continues!\n",
@@ -360,12 +358,12 @@ parse_invalid_erlang_test() ->
     ?assertMatch({match, _}, re:run(Log, "'}'")),
 
    ?assertEqual({errorlist, [{error, {erl_parse, {"syntax error before: '}'", 4}}}]},
-                Parsed).
+                Parsed),
+    ?assertMatch(ok, cuttlefish_test_logging:stop()).
 
 
 parse_bad_datatype_test() ->
-    _ = cuttlefish_test_logging:set_up(),
-    _ = cuttlefish_test_logging:bounce(),
+    ?assertMatch(ok, cuttlefish_test_logging:start()),
 
     SchemaString = lists:flatten([
             "%% @doc some doc\n",
@@ -376,7 +374,8 @@ parse_bad_datatype_test() ->
             "]}.\n"
         ]),
     _Parsed = string(SchemaString),
-    ?assertEqual([], cuttlefish_test_logging:get_logs()).
+    ?assertMatch([], cuttlefish_test_logging:get_logs()),
+    ?assertMatch(ok, cuttlefish_test_logging:stop()).
 
 files_test() ->
     %% files/1 takes a list of schemas in priority order.

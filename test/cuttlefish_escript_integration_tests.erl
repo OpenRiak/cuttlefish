@@ -39,8 +39,7 @@ escript_utf8_test() ->
     ConfFile = filename:join(EtcDir, "utf8.conf"),
     GeneratedConfigDir = filename:join(BaseDir, "generated.config"),
 
-    _ = cuttlefish_test_logging:set_up(),
-    _ = cuttlefish_test_logging:bounce(error),
+    ?assertMatch(ok, cuttlefish_test_logging:start(error)),
 
     %% Empty workspace
     case file:list_dir(GeneratedConfigDir) of
@@ -51,8 +50,9 @@ escript_utf8_test() ->
 
     Args = io_lib:format("-d ~ts -s ~ts -e ~ts -c ~ts generate",
                          [GeneratedConfigDir, LibDir, EtcDir, ConfFile]),
-    ok = cuttlefish_escript:main(Args),
-    [] = cuttlefish_test_logging:get_logs(),
+    ?assertMatch(ok, cuttlefish_escript:main(Args)),
+    ?assertMatch([], cuttlefish_test_logging:get_logs()),
+    ?assertMatch(ok, cuttlefish_test_logging:stop()),
 
     [AppConfig0] = filelib:wildcard("app.*.config", GeneratedConfigDir),
     AppConfig1 = filename:join(GeneratedConfigDir, AppConfig0),
@@ -69,12 +69,13 @@ advanced_config_format_test() ->
     Args = io_lib:format("-d ~ts -s ~ts -e ~ts -c ~ts generate",
         [GeneratedConfigDir, LibDir, EtcDir, ConfFile]),
 
-    _ = cuttlefish_test_logging:set_up(),
-    _ = cuttlefish_test_logging:bounce(error),
+    ?assertMatch(ok, cuttlefish_test_logging:start(error)),
+
     ?assertThrow(stop_deactivate, cuttlefish_escript:main(Args)),
     [Log] = cuttlefish_test_logging:get_logs(),
     ?assertMatch({match, _}, re:run(Log,
-        "Error parsing " ++ AdvConfFile ++ ", incorrect format: \\[\\[a\\],\\[b\\]\\]")).
+        "Error parsing " ++ AdvConfFile ++ ", incorrect format: \\[\\[a\\],\\[b\\]\\]")),
+    ?assertMatch(ok, cuttlefish_test_logging:stop()).
 
 escript_prune_test_() ->
     {timeout, 20, [

@@ -383,43 +383,41 @@ files_incomplete_parse_test() ->
     ok.
 
 generate_element_level_advanced_test() ->
-    _ = cuttlefish_test_logging:set_up(),
-    _ = cuttlefish_test_logging:bounce(warning),
+    ?assertMatch(ok, cuttlefish_test_logging:start(warning)),
     assert_no_output({level, advanced}),
     [Log] = cuttlefish_test_logging:get_logs(),
     ?assertMatch({match, _}, re:run(Log, "{level, advanced} has been deprecated. Use 'hidden' or '{hidden, true}'")),
-    ok.
+    ?assertMatch(ok, cuttlefish_test_logging:stop()).
 
 generate_element_level_intermediate_test() ->
-    _ = cuttlefish_test_logging:set_up(),
-    _ = cuttlefish_test_logging:bounce(warning),
+    ?assertMatch(ok, cuttlefish_test_logging:start(warning)),
     assert_no_output({level, intermediate}),
     [Log] = cuttlefish_test_logging:get_logs(),
     ?assertMatch({match, _}, re:run(Log, "{level, intermediate} has been deprecated. Use 'hidden' or '{hidden, true}'")),
-    ok.
+    ?assertMatch(ok, cuttlefish_test_logging:stop()).
 
 generate_element_hidden_test() ->
-    _ = cuttlefish_test_logging:set_up(),
-    _ = cuttlefish_test_logging:bounce(warning),
+    ?assertMatch(ok, cuttlefish_test_logging:start(warning)),
     assert_no_output(hidden),
     assert_no_output({hidden, true}),
-    ?assertEqual([], cuttlefish_test_logging:get_logs()).
+    ?assertMatch([], cuttlefish_test_logging:get_logs()),
+    ?assertMatch(ok, cuttlefish_test_logging:stop()).
 
 generate_element_deprecated_test() ->
-    _ = cuttlefish_test_logging:set_up(),
-    _ = cuttlefish_test_logging:bounce(warning),
+    ?assertMatch(ok, cuttlefish_test_logging:start(warning)),
     assert_no_output(deprecated),
     assert_no_output({deprecated, true}),
     assert_no_output({deprecated, "use 'foo' instead"}),
-    ?assertEqual([], cuttlefish_test_logging:get_logs()).
+    ?assertMatch([], cuttlefish_test_logging:get_logs()),
+    ?assertMatch(ok, cuttlefish_test_logging:stop()).
 
 generate_element_obsolete_test() ->
-    _ = cuttlefish_test_logging:set_up(),
-    _ = cuttlefish_test_logging:bounce(warning),
+    ?assertMatch(ok, cuttlefish_test_logging:start(warning)),
     assert_no_output(obsolete),
     assert_no_output({obsolete, true}),
     assert_no_output({obsolete, "use 'bar' instead"}),
-    ?assertEqual([], cuttlefish_test_logging:get_logs()).
+    ?assertMatch([], cuttlefish_test_logging:get_logs()),
+    ?assertMatch(ok, cuttlefish_test_logging:stop()).
 
 included_file_test() ->
     Conf = file(cuttlefish_test_util:test_file("include_file.conf")),
