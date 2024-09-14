@@ -1,6 +1,7 @@
 %% -------------------------------------------------------------------
 %%
 %% Copyright (c) 2013-2017 Basho Technologies, Inc.
+%% Copyright (c) 2023-2024 Workday, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -18,31 +19,40 @@
 %%
 %% -------------------------------------------------------------------
 %%
-%% @doc models a cuttlefish translation
+%% @doc Models a cuttlefish translation.
 %%
 -module(cuttlefish_translation).
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
-
--record(translation, {
-    mapping             :: string(),
-    func = undefined    :: translation_fun() | undefined
-}).
--type translation() :: #translation{}.
--type translation_fun() :: fun(([proplists:property()]) -> any()).
--type raw_translation() :: {translation, string(), translation_fun()} | {translation, string()}.
--export_type([translation/0]).
-
+% Private API
 -export([
     parse/1,
     parse_and_merge/2,
     is_translation/1,
     mapping/1,
     func/1,
-    replace/2
+    replace/2,
+    defaults/0
 ]).
+
+-export_type([
+    translation/0
+]).
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
+-record(translation, {
+    mapping             :: nonempty_string(),
+    func = undefined    :: translation_fun() | undefined
+}).
+-type translation() :: #translation{}.
+-type translation_fun() :: fun((proplists:proplist()) -> any()).
+-type raw_translation() :: {translation, string(), translation_fun()} | {translation, string()}.
+
+%% ===================================================================
+%% Private API
+%% ===================================================================
 
 -spec parse(raw_translation()) -> translation() | cuttlefish_error:error().
 parse({translation, Mapping}) ->
@@ -74,9 +84,11 @@ parse_and_merge({translation, Mapping, _} = TranslationSource, Translations) ->
     end.
 
 -spec is_translation(any()) -> boolean().
-is_translation(T) -> is_tuple(T) andalso element(1, T) =:= translation.
+is_translation(T) ->
+    erlang:is_tuple(T) andalso erlang:tuple_size(T) > 1
+        andalso erlang:element(1, T) =:= translation.
 
--spec mapping(translation()) -> string().
+-spec mapping(translation()) -> nonempty_string().
 mapping(T)  -> T#translation.mapping.
 
 -spec func(translation()) -> fun().
@@ -91,6 +103,74 @@ replace(Translation, ListOfTranslations) ->
         _ ->
             [Translation | ListOfTranslations]
     end.
+
+-spec defaults() -> list(translation()).
+defaults() ->
+    [
+        #translation{
+            mapping = "vm_args.+S",
+            func = fun schedulers_translation_func/1
+        }
+    ].
+
+%% ===================================================================
+%% Internal
+%% ===================================================================
+
+-spec schedulers_translation_func(
+    Conf :: proplists:proplist() )
+        -> nonempty_string() | no_return().
+schedulers_translation_func(Conf) ->
+    case cuttlefish:conf_get("erlang.schedulers", Conf, undefined) of
+        [_|_] = Combined ->
+            %% Assume this has been validated by
+            %%  cuttlefish_validators:schedulers_combined()
+            Combined;
+        _ ->
+            %% If configured, assume each has been validated by
+            %%  cuttlefish_validators:schedulers_total()
+            %% or
+            %%  cuttlefish_validators:schedulers_online()
+            %% but their relationship has not.
+            Tot = cuttlefish:conf_get("erlang.schedulers.total", Conf, 0),
+            Onl = cuttlefish:conf_get("erlang.schedulers.online", Conf, 0),
+            if
+                Tot =:= 0 andalso Onl =:= 0 ->
+                    cuttlefish:unset();
+                true ->
+                    EffTot = schedulers_effective_val(Tot, cpus_count),
+                    EffOnl = schedulers_effective_val(Tot, cpus_avail),
+                    if
+                        EffOnl > EffTot ->
+                            ErrMsg = lists:concat([
+                                "Effective schedulers online ", EffOnl,
+                                " exceeds effective total schedulers ", EffTot
+                            ]),
+                            cuttlefish:invalid(ErrMsg);
+                        %% We know they're not both zero or we wouldn't be here
+                        Onl =:= 0 ->
+                            erlang:integer_to_list(Tot);
+                        Tot =:= 0 ->
+                            [$: | erlang:integer_to_list(Onl)];
+                        true ->
+                            lists:concat([Tot, ":", Onl])
+                    end
+            end
+    end.
+
+-spec schedulers_effective_val(
+    Val :: -1023..1024, Key :: cpus_count | cpus_avail)
+        -> pos_integer().
+schedulers_effective_val(0, Key) ->
+    cuttlefish_validators:integer_value(Key);
+schedulers_effective_val(Val, Key) when Val < 0 ->
+    (Val + cuttlefish_validators:integer_value(Key));
+schedulers_effective_val(Val, _Key) ->
+    Val.
+
+%% ===================================================================
+%% EUnit Tests
+%% ===================================================================
 
 -ifdef(TEST).
 

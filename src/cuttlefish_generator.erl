@@ -264,7 +264,8 @@ try_apply_translation(Mapping, XlatFun, XlatArgs) ->
                      {Mapping, Invalid}}};
         %% Any unknown error, perhaps caused by stdlib
         %% stuff.
-        E:R ->
+        E:R:S ->
+            io:format("~nERROR ~tp:~tp  Mapping: ~tp~nArgs:~n  ~tp~nStack~n  ~tp.~n", [E, R, Mapping, XlatArgs, S]),
             {error, {translation_unknown_error,
                      {Mapping, {E, R}}}}
     end.

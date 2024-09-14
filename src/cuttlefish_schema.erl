@@ -82,7 +82,7 @@ merger(ListOfFunInputPairs) ->
                     {NewTranslations, NewMappings, NewValidators}
             end
         end,
-        {[], [], []},
+        {cuttlefish_translation:defaults(), [], []},
         ListOfFunInputPairs),
     filter(Schema).
 
@@ -199,8 +199,12 @@ parse_schema(ScannedTokens, CommentTokens, {TAcc, MAcc, VAcc, EAcc}) ->
             Attributes = comment_parser(Comments),
             Doc = proplists:get_value(doc, Attributes, []),
             See = get_see(Attributes),
-            MappingSource = {mapping, Variable, Mapping, [{see, See},{doc, Doc}|Proplist]},
-            {TAcc, cuttlefish_mapping:parse_and_merge(MappingSource, MAcc), VAcc, EAcc};
+            %% Resolve predefined validators *before* the mapping sees the
+            %% proplist, generating them into the accumulated validators so
+            %% they're simply more named validators to the mapping.
+            {PL, VA, EA} = cuttlefish_validators:resolve_validators(Proplist, VAcc, EAcc),
+            MappingSource = {mapping, Variable, Mapping, [{see, See},{doc, Doc}|PL]},
+            {TAcc, cuttlefish_mapping:parse_and_merge(MappingSource, MAcc), VA, EA};
         {translation, Return} ->
             {cuttlefish_translation:parse_and_merge(Return, TAcc), MAcc, VAcc, EAcc};
         {validator, Return} ->
@@ -408,8 +412,8 @@ files_test() ->
     ?assertEqual("app_b.some_var3", cuttlefish_mapping:mapping(M5)),
     ?assertEqual("app_b.some_var2", cuttlefish_mapping:mapping(M6)),
 
-    ?assertEqual(6, length(Translations)),
-    [T1, T2, T3, T4, T5, T6] = Translations,
+    ?assertMatch(L when L >= 6, length(Translations)),
+    [T1, T2, T3, T4, T5, T6 | _] = Translations,
 
     %% Check translation overrides
     AssertTran = fun(Mapping, Translation, Expected) ->
@@ -481,7 +485,7 @@ strings_filtration_test() ->
           ++ "{mapping, \"b.c\", \"e.i\", []}.\n"
           ++ "{translation, \"e.i\", fun(X) -> \"1\" end}.\n",
     {Translations, Mappings, _} = strings([String]),
-    ?assertEqual(2, length(Translations)),
+    ?assertMatch(L when L >= 2, length(Translations)),
     ?assertEqual(6, length(Mappings)),
     ?assertEqual(["a", "b"], cuttlefish_mapping:variable(hd(Mappings))),
     ?assertEqual(["b", "b"], cuttlefish_mapping:variable(lists:nth(5, Mappings))),

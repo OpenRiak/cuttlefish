@@ -22,20 +22,6 @@
 %%
 -module(cuttlefish_validator).
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
-
--record(validator, {
-    name::string(),
-    description::string(),
-    func::fun()
-    }).
--type validator() :: #validator{}.
--type validator_fun() :: fun((any()) -> boolean()).
--type raw_validator() :: {validator, string(), string(), validator_fun()}.
--export_type([validator/0]).
-
 -export([
     parse/1,
     parse_and_merge/2,
@@ -43,15 +29,51 @@
     name/1,
     description/1,
     func/1,
-    replace/2]).
+    replace/2
+]).
+
+-export_type([validator/0]).
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
+-record(validator, {
+    name :: validator_name(),
+    description :: validator_desc(),
+    func :: validator_fun()
+}).
+-type validator() :: #validator{}.
+-type validator_desc() :: nonempty_string().
+-type validator_fun() :: fun((any()) -> boolean()).
+-type validator_name() :: nonempty_string().
+
+-type validator_tag() :: validator.
+-type fun_args() :: list().
+-type fun_name() :: atom().
+-type raw_validator() ::
+    {validator_tag(), string(), string(), validator_fun()} |
+    {validator_tag(), fun_name(), fun_args()} | {validator_tag(), fun_name()}.
 
 -spec parse(raw_validator()) -> validator() | cuttlefish_error:error().
-parse({validator, Name, Description, Fun}) ->
+parse({validator, [_|_] = Name, [_|_] = Description, Fun})
+        when erlang:is_function(Fun, 1) ->
     #validator{
         name = Name,
         description = Description,
         func = Fun
     };
+parse({validator, FunName}) when erlang:is_atom(FunName) ->
+    parse({validator, FunName, []});
+parse({validator, FunName, FunArgs}) when
+        erlang:is_atom(FunName) andalso erlang:is_list(FunArgs) ->
+    try
+        parse(erlang:apply(cuttlefish_validators, FunName, FunArgs))
+    catch
+        error:undef ->
+            {error, {validator_parse,
+                {undefined, {cuttlefish_validators, FunName, FunArgs}}}}
+    end;
 parse(X) ->
     {error, {validator_parse, X}}.
 
@@ -60,26 +82,32 @@ parse(X) ->
 %% so keyreplace works fine.
 -spec parse_and_merge(
     raw_validator(), [validator()]) -> [validator()|cuttlefish_error:error()].
-parse_and_merge({validator, ValidatorName, _, _} = ValidatorSource, Validators) ->
-    NewValidator = parse(ValidatorSource),
-    case lists:keyfind(ValidatorName, #validator.name, Validators) of
-        false ->
-            [ NewValidator | Validators];
-        _OldMapping ->
-            lists:keyreplace(ValidatorName, #validator.name, Validators, NewValidator)
+parse_and_merge(ValidatorSource, Validators) ->
+    case parse(ValidatorSource) of
+        #validator{name = ValidatorName} = NewValidator ->
+            case lists:keyfind(ValidatorName, #validator.name, Validators) of
+                false ->
+                    [NewValidator | Validators];
+                _OldMapping ->
+                    lists:keyreplace(ValidatorName, #validator.name, Validators, NewValidator)
+            end;
+        Error ->
+            [Error | Validators]
     end.
 
 -spec is_validator(any()) -> boolean().
-is_validator(V) -> is_tuple(V) andalso element(1, V) =:= validator.
+is_validator(V) ->
+    erlang:is_tuple(V) andalso erlang:tuple_size(V) > 1
+        andalso erlang:element(1, V) =:= validator.
 
--spec name(validator()) -> string().
-name(V) -> V#validator.name.
+-spec name(validator()) -> validator_name().
+name(#validator{name = N}) -> N.
 
--spec description(validator()) -> string().
-description(V) -> V#validator.description.
+-spec description(validator()) -> validator_desc().
+description(#validator{description = D}) -> D.
 
--spec func(validator()) -> fun().
-func(V) -> V#validator.func.
+-spec func(validator()) -> validator_fun().
+func(#validator{func = F}) -> F.
 
 -spec replace(validator(), [validator()]) -> [validator()].
 replace(Validator, ListOfValidators) ->

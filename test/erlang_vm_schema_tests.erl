@@ -1,6 +1,7 @@
 %% -------------------------------------------------------------------
 %%
 %% Copyright (c) 2013-2017 Basho Technologies, Inc.
+%% Copyright (c) 2023-2024 Workday, Inc.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -22,53 +23,64 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-define(SHOWVAR(V), io:format(user,
+    "~n= = = = = ~ts:~b  ~ts:~n  ~tp.~n= = = = =~n", [?MODULE, ?LINE, ??V, V])).
+
 %% basic schema test will check to make sure that all defaults from the schema
 %% make it into the generated app.config
 basic_schema_test() ->
-    %% The defaults are defined in priv/riak_kv.schema and multi_backend.schema.
-    %% they are the files under test.
+    %% The defaults are defined in priv/erlang_vm.schema, the file under test.
     Config = cuttlefish_unit:generate_templated_config(
         [cuttlefish_test_util:priv_file("erlang_vm.schema")], [], context()),
 
-    cuttlefish_unit:assert_config(Config, "vm_args.-smp", enable),
-    cuttlefish_unit:assert_config(Config, "vm_args.+W", "w"),
-    cuttlefish_unit:assert_config(Config, "vm_args.+K", true),
-    cuttlefish_unit:assert_not_configured(Config, "vm_args.+S"),
-    cuttlefish_unit:assert_config(Config, "vm_args.-name", "node@host"),
-    cuttlefish_unit:assert_config(Config, "vm_args.-setcookie", "erlang"),
-    cuttlefish_unit:assert_config(Config, "vm_args.+A", 64),
-    cuttlefish_unit:assert_config(Config, "vm_args.-env ERL_FULLSWEEP_AFTER", 0),
+    %% The only defaults set in the schema file
+    cuttlefish_unit:assert_config(Config, "vm_args.-name", 'node@host'),
     cuttlefish_unit:assert_config(Config, "vm_args.-env ERL_CRASH_DUMP", "dump"),
-    cuttlefish_unit:assert_config(Config, "vm_args.+P", 256000),
-    cuttlefish_unit:assert_not_configured(Config, "vm_args.+zdbbl"),
-    cuttlefish_unit:assert_not_configured(Config, "vm_args.+sfwi"),
+
+    %% Following are listed in the schema file but don't have defaults that are
+    %% written to app.config
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.-setcookie"),
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.-env ERL_FULLSWEEP_AFTER"),
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.+a"),
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.+A"),
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.+B"),
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.+c"),
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.+C"),
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.+e"),
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.+pc"),
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.+P"),
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.+Q"),
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.+S"),
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.+SP"),
     cuttlefish_unit:assert_not_configured(Config, "vm_args.+scl"),
     cuttlefish_unit:assert_not_configured(Config, "vm_args.+sub"),
-    cuttlefish_unit:assert_not_configured(Config, "vm_args.-kernel net_ticktime"),
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.+t"),
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.+W"),
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.+zdbbl"),
     cuttlefish_unit:assert_not_configured(Config, "kernel.inet_dist_listen_min"),
     cuttlefish_unit:assert_not_configured(Config, "kernel.inet_dist_listen_max"),
-    case cuttlefish:otp("R16", erlang:system_info(otp_release)) of
-        true ->
-            cuttlefish_unit:assert_config(Config, "vm_args.+Q", 262144),
-            cuttlefish_unit:assert_config(Config, "vm_args.+e", 256000);
-        _ ->
-            cuttlefish_unit:assert_config(Config, "vm_args.-env ERL_MAX_PORTS", 262144),
-            cuttlefish_unit:assert_config(Config, "vm_args.-env ERL_MAX_ETS_TABLES", 256000)
-    end,
+    cuttlefish_unit:assert_not_configured(Config, "kernel.inet_dist_use_interface"),
+    cuttlefish_unit:assert_not_configured(Config, "kernel.net_ticktime"),
+
+    %% Deprecated
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.+sfwi"),
+
+    %% Obsolete
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.-smp"),
+    cuttlefish_unit:assert_not_configured(Config, "vm_args.+K"),
     ok.
 
 override_schema_test() ->
     %% Conf represents the riak.conf file that would be read in by cuttlefish.
-    %% this proplists is what would be output by the conf_parse module
+    %% This proplists is what would be output by the conf_parse module.
     Conf = [
-        {["erlang", "smp"], "disable"},
-        {["erlang", "W"], "i"},
-        {["erlang", "K"], off},
+        {["erlang", "warning_map"], "i"},
         {["erlang", "schedulers", "total"], 4},
         {["erlang", "schedulers", "online"], 4},
         {["nodename"], "mynode@myhost"},
         {["distributed_cookie"], "riak"},
         {["erlang", "async_threads"], 22},
+        {["erlang", "async_threads", "stack_size"], 163840},
         {["erlang", "max_ports"], 32000},
         {["erlang", "fullsweep_after"], 1},
         {["erlang", "crash_dump"], "place"},
@@ -86,35 +98,24 @@ override_schema_test() ->
     Config = cuttlefish_unit:generate_templated_config(
         [cuttlefish_test_util:priv_file("erlang_vm.schema")], Conf, context()),
 
-    cuttlefish_unit:assert_config(Config, "vm_args.-smp", disable),
-    cuttlefish_unit:assert_config(Config, "vm_args.+W", "i"),
-    cuttlefish_unit:assert_config(Config, "vm_args.+K", false),
+    cuttlefish_unit:assert_config(Config, "vm_args.+W", 'i'),
     cuttlefish_unit:assert_config(Config, "vm_args.+S", "4:4"),
-    cuttlefish_unit:assert_config(Config, "vm_args.-name", "mynode@myhost"),
-    cuttlefish_unit:assert_config(Config, "vm_args.-setcookie", "riak"),
+    cuttlefish_unit:assert_config(Config, "vm_args.-name", 'mynode@myhost'),
+    cuttlefish_unit:assert_config(Config, "vm_args.-setcookie", 'riak'),
+    cuttlefish_unit:assert_config(Config, "vm_args.+a", 163840),
     cuttlefish_unit:assert_config(Config, "vm_args.+A", 22),
     cuttlefish_unit:assert_config(Config, "vm_args.-env ERL_FULLSWEEP_AFTER", 1),
     cuttlefish_unit:assert_config(Config, "vm_args.-env ERL_CRASH_DUMP", "place"),
     cuttlefish_unit:assert_config(Config, "vm_args.+P", 128001),
     cuttlefish_unit:assert_config(Config, "vm_args.+zdbbl", 1),
     cuttlefish_unit:assert_config(Config, "vm_args.+sfwi", 500),
-    cuttlefish_unit:assert_config(Config, "vm_args.+scl", true),
-    cuttlefish_unit:assert_config(Config, "vm_args.+sub", false),
+    cuttlefish_unit:assert_config(Config, "vm_args.+scl", 'true'),
+    cuttlefish_unit:assert_config(Config, "vm_args.+sub", 'false'),
     cuttlefish_unit:assert_config(Config, "kernel.inet_dist_listen_min", 6000),
     cuttlefish_unit:assert_config(Config, "kernel.inet_dist_listen_max", 7999),
-    cuttlefish_unit:assert_config(Config, "vm_args.-kernel net_ticktime", 43),
-
-    %% These settings are version dependent, so we won't even test them here
-    %% because we don't know what version you're running, so we'll cover it
-    %% in two tests below
-    case cuttlefish:otp("R16", erlang:system_info(otp_release)) of
-        true ->
-            cuttlefish_unit:assert_config(Config, "vm_args.+Q", 32000),
-            cuttlefish_unit:assert_config(Config, "vm_args.+e", 128000);
-        _ ->
-            cuttlefish_unit:assert_config(Config, "vm_args.-env ERL_MAX_PORTS", 32000),
-            cuttlefish_unit:assert_config(Config, "vm_args.-env ERL_MAX_ETS_TABLES", 128000)
-    end,
+    cuttlefish_unit:assert_config(Config, "kernel.net_ticktime", 43),
+    cuttlefish_unit:assert_config(Config, "vm_args.+Q", 32000),
+    cuttlefish_unit:assert_config(Config, "vm_args.+e", 128000),
     ok.
 
 erlang_scheduler_test() ->
@@ -144,7 +145,6 @@ erlang_scheduler_test() ->
     Config4 = cuttlefish_unit:generate_templated_config(
         [ErlVmSchema], [], context()),
     cuttlefish_unit:assert_not_configured(Config4, "vm_args.+S"),
-
 
     ok.
 

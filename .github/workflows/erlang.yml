@@ -13,7 +13,12 @@ jobs:
       matrix:
         os: [ macos-latest, ubuntu-latest, windows-2022 ]
         otp: ['24', '26']
-        rebar: ['3.22']
+        rebar: ['3.22', '3.24']
+        exclude:
+          - otp: '24'
+            os: macos-latest
+          - rebar: '3.24'
+            otp: '24'
 
     steps:
       - uses: actions/checkout@v3
