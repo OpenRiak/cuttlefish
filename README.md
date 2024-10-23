@@ -1,6 +1,6 @@
 # Cuttlefish
 
-[![Erlang CI Actions Status](https://github.com/basho/cuttlefish/workflows/Erlang%20CI/badge.svg)](https://github.com/cuttlefish/riak_kv/actions)
+![Cuttlefish OpenRiak Status](https://github.com/OpenRiak/cuttlefish/actions/workflows/erlang.yml/badge.svg?branch=openriak-3.2)
 
 Cuttlefish is a library for Erlang applications that wish to walk the
 fine line between Erlang `app.config`s and a sysctl-like syntax.
