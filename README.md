@@ -7,11 +7,13 @@ fine line between Erlang `app.config`s and a sysctl-like syntax.
 The name is a pun on the pronunciation of 'sysctl' and jokes are
 better explained.
 
-This repository retains full history of the original repository, [basho/cuttlefish/](https://github.com/basho/cuttlefish/),
-but intentionally cut ties with that repo to avoid confusion as to
-where is the most up-to-date, maintained version is.
+This repository retains the history of the original [Basho repository](https://github.com/basho/cuttlefish/),
+but is no longer forked from it as the OpenRiak version evolves.
 
-This is the repository used to produce [Hex.pm releases](https://hex.pm/packages/cuttlefish) of the project.
+The prior OpenRiak [cuttlefish fork](https://github.com/OpenRiak/cuttlefish-basho) is retained for historical purposes.
+
+Efforts are made to keep this version of Cuttlefish in sync with the [Kyorai project](https://github.com/Kyorai/cuttlefish/)
+and we hope that in time the two will be interchangeable.
 
 ## Supported Erlang/OTP Versions
 
