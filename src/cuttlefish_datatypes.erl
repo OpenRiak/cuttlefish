@@ -277,7 +277,7 @@ from_string(List, {list, DataType}) when is_list(List) ->
     lists:map(fun(El) ->
                   from_string(string:trim(El), DataType)
               end,
-              string:split(List, ",", all));
+              string:lexemes(List, ","));
 
 from_string(Thing, InvalidDatatype) ->
    {error, {type, {Thing, InvalidDatatype}}}.
@@ -539,6 +539,15 @@ from_string_integer_list_test() ->
 from_string_atom_list_test() ->
     %% more examples in the the cuttlefish_duration tests
     ?assertEqual([a, b, c], from_string("a, b,c", {list, atom})),
+    ok.
+
+from_string_singleatom_list_test() ->
+    %% more examples in the the cuttlefish_duration tests
+    ?assertEqual([a], from_string("a ", {list, atom})),
+    ok.
+
+from_emptystring_atom_list_test() ->
+    ?assertEqual([], from_string("", {list, atom})),
     ok.
 
 from_string_string_in_integer_list_test() ->
