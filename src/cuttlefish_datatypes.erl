@@ -92,6 +92,9 @@ is_supported(float) -> true;
 is_supported({list, {list, _}}) ->
     % lists of lists are not supported
     false;
+is_supported({list, {integer, _}}) ->
+    % lists of integers are not supported due to issues with to_string/1
+    false;
 is_supported({list, ListDatatype}) ->
     is_supported(ListDatatype);
 is_supported(_) -> false.
@@ -199,12 +202,18 @@ to_string(Float, float) when is_list(Float) -> Float;
 
 to_string([], {list, _}) -> "";
 to_string(List, {list, DT}) when is_list(List) ->
-    lists:flatten(
-        lists:join(
-            ",",
-            lists:map(fun(E) -> to_string(E, DT) end, List)
-        )
-    );
+    case lists:all(fun erlang:is_integer/1, List) of
+        true ->
+        % is already a string
+            List;
+        false ->
+            lists:flatten(
+                lists:join(
+                    ",",
+                    lists:map(fun(E) -> to_string(E, DT) end, List)
+                )
+            )
+    end;
 
 %% The Pokemon Clause: Gotta Catch 'em all!
 to_string(Value, MaybeExtendedDatatype) ->
@@ -396,7 +405,9 @@ to_string_list_test() ->
     ?assertEqual(
         "crash,error",
         to_string([crash, error], {list, {enum, [crash, error]}})
-    ).
+    ),
+    ?assertEqual("none", to_string([none], {list, {enum, [crash, error]}})),
+    ?assertEqual("none", to_string("none", {list, {enum, [crash, error]}})).
 
 to_string_extended_type_test() ->
     ?assertEqual("split_the", to_string(split_the, {atom, split_the})),
