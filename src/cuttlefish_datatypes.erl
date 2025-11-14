@@ -197,7 +197,14 @@ to_string(Float, float) when is_float(Float) ->
     float_to_list(Float, [{decimals, 6}, compact]);
 to_string(Float, float) when is_list(Float) -> Float;
 
-to_string(List, {list, _}) when is_list(List) -> List;
+to_string([], {list, _}) -> "";
+to_string(List, {list, DT}) when is_list(List) ->
+    lists:flatten(
+        lists:join(
+            ",",
+            lists:map(fun(E) -> to_string(E, DT) end, List)
+        )
+    );
 
 %% The Pokemon Clause: Gotta Catch 'em all!
 to_string(Value, MaybeExtendedDatatype) ->
@@ -383,6 +390,13 @@ to_string_float_test() ->
     ?assertEqual("0.1", to_string(0.1, float)),
     ?assertEqual("0.1", to_string("0.1", float)),
     ok.
+
+to_string_list_test() ->
+    ?assertEqual("", to_string([], {list, {enum, [crash, error]}})),
+    ?assertEqual(
+        "crash,error",
+        to_string([crash, error], {list, {enum, [crash, error]}})
+    ).
 
 to_string_extended_type_test() ->
     ?assertEqual("split_the", to_string(split_the, {atom, split_the})),
