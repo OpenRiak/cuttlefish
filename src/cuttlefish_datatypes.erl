@@ -197,6 +197,8 @@ to_string(Float, float) when is_float(Float) ->
     float_to_list(Float, [{decimals, 6}, compact]);
 to_string(Float, float) when is_list(Float) -> Float;
 
+to_string(List, {list, _}) when is_list(List) -> List;
+
 %% The Pokemon Clause: Gotta Catch 'em all!
 to_string(Value, MaybeExtendedDatatype) ->
     case is_extended(MaybeExtendedDatatype) of
