@@ -406,8 +406,9 @@ to_string_list_test() ->
         "crash,error",
         to_string([crash, error], {list, {enum, [crash, error]}})
     ),
-    ?assertEqual("none", to_string([none], {list, {enum, [crash, error]}})),
-    ?assertEqual("none", to_string("none", {list, {enum, [crash, error]}})).
+    ?assertEqual("none", to_string([none], {list, {enum, [none, error]}})),
+    ?assertEqual("none", to_string("none", {list, {enum, [crash, none]}})),
+    ?assertEqual("", to_string("", {list, {enum, [crash, error]}})).
 
 to_string_extended_type_test() ->
     ?assertEqual("split_the", to_string(split_the, {atom, split_the})),
@@ -554,22 +555,18 @@ from_string_string_test() ->
     ?assertEqual("string", from_string("string", string)).
 
 from_string_string_list_test() ->
-    %% more examples in the the cuttlefish_duration tests
     ?assertEqual(["v1", "v2", "v3"], from_string("v1, v2,v3", {list, string})),
     ok.
 
 from_string_integer_list_test() ->
-    %% more examples in the the cuttlefish_duration tests
     ?assertEqual([1, 2, 3], from_string("1, 2,3", {list, integer})),
     ok.
 
 from_string_atom_list_test() ->
-    %% more examples in the the cuttlefish_duration tests
     ?assertEqual([a, b, c], from_string("a, b,c", {list, atom})),
     ok.
 
 from_string_singleatom_list_test() ->
-    %% more examples in the the cuttlefish_duration tests
     ?assertEqual([a], from_string("a ", {list, atom})),
     ok.
 
@@ -578,7 +575,6 @@ from_emptystring_atom_list_test() ->
     ok.
 
 from_string_string_in_integer_list_test() ->
-    %% more examples in the the cuttlefish_duration tests
     ?assertEqual([{error, {conversion, {"a", integer}}}, 1, 2],
                  from_string("a, 1,2", {list, integer})),
     ok.
