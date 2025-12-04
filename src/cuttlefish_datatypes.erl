@@ -92,6 +92,9 @@ is_supported(float) -> true;
 is_supported({list, {list, _}}) ->
     % lists of lists are not supported
     false;
+is_supported({list, {integer, _}}) ->
+    % lists of integers are not supported due to issues with to_string/1
+    false;
 is_supported({list, ListDatatype}) ->
     is_supported(ListDatatype);
 is_supported(_) -> false.
@@ -197,6 +200,21 @@ to_string(Float, float) when is_float(Float) ->
     float_to_list(Float, [{decimals, 6}, compact]);
 to_string(Float, float) when is_list(Float) -> Float;
 
+to_string([], {list, _}) -> "";
+to_string(List, {list, DT}) when is_list(List) ->
+    case lists:all(fun erlang:is_integer/1, List) of
+        true ->
+        % is already a string
+            List;
+        false ->
+            lists:flatten(
+                lists:join(
+                    ",",
+                    lists:map(fun(E) -> to_string(E, DT) end, List)
+                )
+            )
+    end;
+
 %% The Pokemon Clause: Gotta Catch 'em all!
 to_string(Value, MaybeExtendedDatatype) ->
     case is_extended(MaybeExtendedDatatype) of
@@ -277,7 +295,7 @@ from_string(List, {list, DataType}) when is_list(List) ->
     lists:map(fun(El) ->
                   from_string(string:trim(El), DataType)
               end,
-              string:split(List, ",", all));
+              string:lexemes(List, ","));
 
 from_string(Thing, InvalidDatatype) ->
    {error, {type, {Thing, InvalidDatatype}}}.
@@ -381,6 +399,16 @@ to_string_float_test() ->
     ?assertEqual("0.1", to_string(0.1, float)),
     ?assertEqual("0.1", to_string("0.1", float)),
     ok.
+
+to_string_list_test() ->
+    ?assertEqual("", to_string([], {list, {enum, [crash, error]}})),
+    ?assertEqual(
+        "crash,error",
+        to_string([crash, error], {list, {enum, [crash, error]}})
+    ),
+    ?assertEqual("none", to_string([none], {list, {enum, [none, error]}})),
+    ?assertEqual("none", to_string("none", {list, {enum, [crash, none]}})),
+    ?assertEqual("", to_string("", {list, {enum, [crash, error]}})).
 
 to_string_extended_type_test() ->
     ?assertEqual("split_the", to_string(split_the, {atom, split_the})),
@@ -527,22 +555,26 @@ from_string_string_test() ->
     ?assertEqual("string", from_string("string", string)).
 
 from_string_string_list_test() ->
-    %% more examples in the the cuttlefish_duration tests
     ?assertEqual(["v1", "v2", "v3"], from_string("v1, v2,v3", {list, string})),
     ok.
 
 from_string_integer_list_test() ->
-    %% more examples in the the cuttlefish_duration tests
     ?assertEqual([1, 2, 3], from_string("1, 2,3", {list, integer})),
     ok.
 
 from_string_atom_list_test() ->
-    %% more examples in the the cuttlefish_duration tests
     ?assertEqual([a, b, c], from_string("a, b,c", {list, atom})),
     ok.
 
+from_string_singleatom_list_test() ->
+    ?assertEqual([a], from_string("a ", {list, atom})),
+    ok.
+
+from_emptystring_atom_list_test() ->
+    ?assertEqual([], from_string("", {list, atom})),
+    ok.
+
 from_string_string_in_integer_list_test() ->
-    %% more examples in the the cuttlefish_duration tests
     ?assertEqual([{error, {conversion, {"a", integer}}}, 1, 2],
                  from_string("a, 1,2", {list, integer})),
     ok.
