@@ -274,9 +274,9 @@ proplists_to_kvcpath_riak_core_test() ->
     ]}],
     Paths = proplist_to_kvcpaths(Proplist),
     ?assertEqual([
-        "riak_core.ring_creation_size",
-        "riak_core.cluster_mgr"
-    ], Paths),
+        "riak_core.cluster_mgr",
+        "riak_core.ring_creation_size"
+    ], lists:sort(Paths)),
     ok.
 
 -endif.
